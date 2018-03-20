@@ -27,6 +27,7 @@ This is to improve execution time.
         entries, errors = parse.parse(acl)
         entries_table.append(entries[:])
         errors_table.append(errors[:])
+    utils.output_xlsx_file(entries_table, errors_table, [], args.out)
 
 
 if __name__ == "__main__":

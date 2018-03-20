@@ -19,8 +19,8 @@ def parse(acl):
         elif result == 'error':
             errors_table.append(values)
             error_count += 1
-    print(parsed_table)
-    print(errors_table)
+    # print(parsed_table)
+    # print(errors_table)
     print("Extended Entries : ", extended_count)
     print("Remark Entries   : ", remark_count)
     print("Parsing Errors   : ", error_count)
@@ -43,49 +43,82 @@ def parse_line(entry):
 
 
 def parse_extended(entry):
-    extended = re.search(r"access-list (?P<list_name>[^\s]+) line (?P<line_number>[^\s]+) extended (?P<condition>[^\s]+) (?P<protocol>[^\s]+) (?P<src>[^\s]+) (?P<src2>[^\s]+) (?P<ent1>[^\s]+)", entry)
+    extended = re.search(r"access-list (?P<list_name>[^\s]+) "
+                         r"line (?P<line_number>[^\s]+) "
+                         r"extended (?P<condition>[^\s]+) "
+                         r"(?P<protocol>[^\s]+) "
+                         r"(?P<remainder>.*$)"
+                         , entry)
     if extended:
-        acl_entry = [extended.group('list_name')
-                    , extended.group('line_number')
-                    , 'extended'
-                    , ''
-                    , extended.group('condition')
-                    , extended.group('protocol')]
-        if extended.group('src') == 'host':
-            acl_entry.append(extended.group('src2'))
-            acl_entry.append('255.255.255.255')
-            if extended.group('src2') == 'host':
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append(extended.group('ent1'))
-                acl_entry.append('255.255.255.255')
-            elif extended.group('src2') == 'any':
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('0.0.0.0')
-                acl_entry.append('0.0.0.0')
-        elif extended.group('src') == 'any':
-            acl_entry.append('0.0.0.0')
-            acl_entry.append('0.0.0.0')
-            if extended.group('src2') == 'host':
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append(extended.group('ent1'))
-                acl_entry.append('255.255.255.255')
-            elif extended.group('src2') == 'any':
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('')
-                acl_entry.append('0.0.0.0')
-                acl_entry.append('0.0.0.0')
+        src_ip, src_mask, remainder = get_ip_info(extended.group('remainder'))
+        src_port_cond, src_port, src_port_range_end, remainder = get_port_info(remainder)
+        dest_ip, dest_mask, remainder = get_ip_info(remainder)
+        dest_port_cond, dest_port, dest_port_range_end, remainder = get_port_info(remainder)
+
+        conclusion = re.search(r".*\(hitcnt=(?P<hitcount>[^)]+)\) (?P<checksum>.*) ", remainder)
+        if conclusion:
+            hitcount = conclusion.group('hitcount')
+            checksum = conclusion.group('checksum')
         else:
-            acl_entry.append(extended.group('src'))
-            acl_entry.append(extended.group('src2'))
+            return False, None
+        acl_entry = [
+            extended.group('list_name'),
+            extended.group('line_number'),
+            'extended', '',
+            extended.group('condition'),
+            extended.group('protocol'),
+            src_ip, src_mask,
+            src_port_cond, src_port, src_port_range_end,
+            dest_ip, dest_mask,
+            dest_port_cond, dest_port, dest_port_range_end,
+            hitcount, checksum
+        ]
+        # print(acl_entry)
         return True, acl_entry
-    return False, None
+    else:
+        return False, None
+
+
+def get_ip_info(entry):
+    ip_info = re.split(" ", entry, 3)
+    if ip_info[0] == 'host':
+        ip = ip_info[1]
+        subnet = '255.255.255.255'
+        del ip_info[:2]
+        remainder = " ".join(ip_info)
+    elif ip_info[0] == 'any':
+        ip = '0.0.0.0'
+        subnet = '0.0.0.0'
+        del ip_info[:1]
+        remainder = " ".join(ip_info)
+    else:  # This will be ips and object groups.
+        ip = ip_info[0]
+        subnet = ip_info[1]
+        del ip_info[:2]
+        remainder = " ".join(ip_info)
+    return ip, subnet, remainder
+
+
+def get_port_info(entry):
+    port_info = re.split(" ", entry, 4)
+    if (port_info[0] == 'eq') or (port_info[0] == 'gt') or (port_info[0] == 'lt'):
+        port_comp = port_info[0]
+        port = port_info[1]
+        port_range_end = ''
+        del port_info[:2]
+        remainder = " ".join(port_info)
+    elif port_info[0] == 'range':
+        port_comp = port_info[0]
+        port = port_info[1]
+        port_range_end = port_info[2]
+        del port_info[:3]
+        remainder = " ".join(port_info)
+    else:
+        port_comp = ''
+        port = ''
+        port_range_end = ''
+        remainder = entry
+    return port_comp, port, port_range_end, remainder
 
 
 def parse_remark(entry):
@@ -95,10 +128,7 @@ def parse_remark(entry):
             , remark.group('line_number')
             , 'remark'
             , remark.group('remark')
-            , ''
-            , ''
-            , ''
-            , '']
+            , '', '', '', '', '', '', '', '', '', '', '', '', '', '']
         return True, acl_entry
     return False, None
 
