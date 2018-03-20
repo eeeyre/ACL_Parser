@@ -20,8 +20,13 @@ This is to improve execution time.
     parser.add_argument('-x', '--promiscuous', action='store_true', help='Perform the promiscuous rules audit')
     parser.add_argument('infile', nargs='+', type=argparse.FileType('r'), help='Path to the ACL Definition file (.txt format)')
     args = parser.parse_args()
-    print(args)
-
+    # print(args)
+    entries_table = []
+    errors_table = []
+    for acl in args.infile:
+        entries, errors = parse.parse(acl)
+        entries_table.append(entries[:])
+        errors_table.append(errors[:])
 
 
 if __name__ == "__main__":
