@@ -56,9 +56,13 @@ def parse_extended(entry):
         dest_port_cond, dest_port, dest_port_range_end, remainder = get_port_info(remainder)
 
         conclusion = re.search(r".*\(hitcnt=(?P<hitcount>[^)]+)\) (?P<checksum>.*) ", remainder)
+        conclusion_no_hitcount = re.search(r".*(?P<checksum>0x.*)", remainder)
         if conclusion:
             hitcount = conclusion.group('hitcount')
             checksum = conclusion.group('checksum')
+        elif conclusion_no_hitcount:
+            hitcount = ''
+            checksum = conclusion_no_hitcount.group('checksum')
         else:
             return False, None
         acl_entry = [
@@ -80,7 +84,7 @@ def parse_extended(entry):
 
 
 def get_ip_info(entry):
-    ip_info = re.split(" ", entry, 3)
+    ip_info = re.split(" ", entry, 4)
     if ip_info[0] == 'host':
         ip = ip_info[1]
         subnet = '255.255.255.255'
@@ -90,6 +94,11 @@ def get_ip_info(entry):
         ip = '0.0.0.0'
         subnet = '0.0.0.0'
         del ip_info[:1]
+        remainder = " ".join(ip_info)
+    elif ip_info[0] == 'fqdn':
+        ip = ip_info[1]
+        subnet = 'fqdn'
+        del ip_info[:3]
         remainder = " ".join(ip_info)
     else:  # This will be ips and object groups.
         ip = ip_info[0]

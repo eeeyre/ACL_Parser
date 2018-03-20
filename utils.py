@@ -8,7 +8,7 @@ def generate_headers(table_type):
     if table_type == 'rules':
         header = ['ACL Name', 'Entry Number', 'Entry Type',
                   'Remark Text', 'Permission', 'Protocol',
-                  'Source IP', 'Source Mask', 'Src Port Operator',
+                  'Source', 'Source Mask', 'Src Port Operator',
                   'Source Port', 'Source Port Range End',
                   'Destination IP', 'Destination Mask', 'Destination Port Operator',
                   'Destination Port', 'Destination Port Range End',
@@ -33,7 +33,8 @@ def get_sample_data(data_type):
 
 def output_xlsx_file(parsed_rules, errors, audit, output_file):
     wb = Workbook()
-    ws1 = wb.create_sheet('Parsed')
+    ws1 = wb.active
+    ws1.title = 'Parsed'
     ws2 = wb.create_sheet('Errors')
     ws3 = wb.create_sheet('Audit')
     ws1.append(generate_headers('rules'))
