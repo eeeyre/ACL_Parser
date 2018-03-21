@@ -14,8 +14,9 @@ def generate_headers(table_type):
                   'Destination Port', 'Destination Port Range End',
                   'Hit Count', 'Check Sum']
     if table_type == 'audit':
-        header = ['UnDefined Table Structure']
+        header = ['ACL Name', 'Entry Number', 'Violation Type', 'Violation Description']
     return header
+
 
 def get_sample_data(data_type):
     if data_type == 'errors':
@@ -31,15 +32,17 @@ def get_sample_data(data_type):
     return header
 
 
-def output_xlsx_file(parsed_rules, errors, audit, output_file):
+def output_xlsx_file(parsed_rules, errors, audit_type, audit, output_file):
+    audit_bool = audit_type[0] or audit_type[1] or audit_type[2]
     wb = Workbook()
     ws1 = wb.active
     ws1.title = 'Parsed'
     ws2 = wb.create_sheet('Errors')
-    ws3 = wb.create_sheet('Audit')
     ws1.append(generate_headers('rules'))
     ws2.append(generate_headers('errors'))
-    ws3.append(generate_headers('audit'))
+    if audit_bool:
+        ws3 = wb.create_sheet('Audit')
+        ws3.append(generate_headers('audit'))
     parsed_count = 0
     err_count = 0
     audit_count = 0
@@ -51,8 +54,8 @@ def output_xlsx_file(parsed_rules, errors, audit, output_file):
         for entry_err in acl_err:
             ws2.append([entry_err])
             err_count += 1
-    for acl_audit in audit:
-        for entry_audit in acl_audit:
+    if audit_bool:
+        for entry_audit in audit:
             ws3.append(entry_audit)
             audit_count += 1
 
@@ -60,13 +63,25 @@ def output_xlsx_file(parsed_rules, errors, audit, output_file):
                            showLastColumn=False, showRowStripes=True, showColumnStripes=False)
     parsed_range = "A1:R"+str(parsed_count+1)
     errors_range = "A1:A"+str(err_count+1)
-    audit_range = "A1:A"+str(audit_count+1)
+    if audit_bool:
+        audit_range = "A1:D"+str(audit_count+1)
     parsed_tab = Table(displayName='Parsed_Rules', ref=parsed_range, tableStyleInfo=style)
     errors_tab = Table(displayName='Parsing_Errors', ref=errors_range, tableStyleInfo=style)
-    audit_tab = Table(displayName='Auditing_Results', ref=audit_range, tableStyleInfo=style)
+    if audit_bool:
+        audit_tab = Table(displayName='Auditing_Results', ref=audit_range, tableStyleInfo=style)
 
     ws1.add_table(parsed_tab)
     ws2.add_table(errors_tab)
-    ws3.add_table(audit_tab)
+    if audit_bool:
+        ws3.add_table(audit_tab)
 
     wb.save(output_file)
+
+
+def add_desc(desc, addition):
+    output = ''
+    if desc != '':
+        output = desc + ", " + addition
+    else:
+        output = addition
+    return output
