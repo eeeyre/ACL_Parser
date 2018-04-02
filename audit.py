@@ -78,9 +78,9 @@ def audit_promiscuous(entry):
     if entry[11] == '0.0.0.0' and entry[12] == '0.0.0.0':
         violation_desc = utils.add_desc(violation_desc, 'Any Keyword in Destination')
     if entry[9] == '':
-        violation_desc = utils.add_desc(violation_desc, 'Any Keyword in Source Port')
+        violation_desc = utils.add_desc(violation_desc, 'Unspecified Source Port')
     if entry[14] == '':
-        violation_desc = utils.add_desc(violation_desc, 'Any Keyword in Destination Port')
+        violation_desc = utils.add_desc(violation_desc, 'Unspecified Destination Port')
     # Check if the subnet is greater than the classful designation
     if large_source:
         violation_desc = utils.add_desc(violation_desc, 'Source Subnet Larger than ' + source_class)
@@ -98,7 +98,7 @@ def audit_redundant(entry, acl):
     violation_type = 'Redundant'
     violation_desc = ''
     for line in acl:
-        if entry[0] != line[0]:
+        if entry[0] != line[0]:  # Skip if the ACL Name doesn't match
             continue
         elif entry[0] == line[0] \
                 and entry[1] > line[1] \
